@@ -33,7 +33,7 @@ SOFTWARE.
 #include "spi_driver.h"
 #include "SST26VF032.h"
 #include "setup_funcs.h"
-
+#include "string.h"
 /* Private macro */
 /* Private variables */
 /* Private function prototypes */
@@ -367,9 +367,10 @@ int main(void)
 {
   uint8_t res=0;
   uint16_t i;
+  uint8_t j;
   uint16_t size =0;
   uint8_t nFontsize =0;
-
+  uint8_t nTestbuf[64];
 
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
@@ -381,26 +382,21 @@ int main(void)
   MX_GPIO_Init();
   MX_SPI1_Init();
 
-
-
-
   res = sst_flash_init();
-
-
-
-
-
-
-
 
   sst_flash_write_block_proc();
   sst_flash_read_block_proc();
   sst_flash_write_enable();
   sst_flash_read_status();
 
-    pGP_LED->ODR |= GPIO_ODR_3;
-    while(pGP_BTN->IDR&GPIO_IDR_0);
-    pGP_LED->ODR &= ~GPIO_ODR_3;
+  	  //erase the chip.
+  	  	 sst_flash_earse_chip();
+
+
+
+//    pGP_LED->ODR |= GPIO_ODR_3;
+//    while(pGP_BTN->IDR&GPIO_IDR_0);
+//    pGP_LED->ODR &= ~GPIO_ODR_3;
     //step one, font small.
     size = sizeof(fontsmall);
     nFontsize = 20;
@@ -419,10 +415,25 @@ int main(void)
   	  }while(sHandler.BUSY1);
     }
 
+    //verify contents of flash.
+   for(i=0;i<(sizeof(fontsmall)/64);i++)
+   {
+	   	   //pull 64 bytes and compare.
+	   sst_flash_read_cmd(FLASH_JUMP_SMALL+i*64,64,nTestbuf);
 
-    	pGP_LED->ODR |= GPIO_ODR_3;
-  	    while(pGP_BTN->IDR&GPIO_IDR_0);
-  	    pGP_LED->ODR &= ~GPIO_ODR_3;
+	   if(memcmp(nTestbuf,(uint8_t*)(fontsmall+i*64),64))
+	   	  {
+	   		 while(1); //there is an issue with the flash...
+	   	  }
+	   HAL_Delay(10);
+   }
+
+
+
+
+//    	pGP_LED->ODR |= GPIO_ODR_3;
+//  	    while(pGP_BTN->IDR&GPIO_IDR_0);
+//  	    pGP_LED->ODR &= ~GPIO_ODR_3;
   	    //step one, font med.
   	    size = sizeof(fontmed);
   	    nFontsize = 36;
@@ -441,9 +452,9 @@ int main(void)
   	  	  }while(sHandler.BUSY1);
   	    }
 
-  	pGP_LED->ODR |= GPIO_ODR_3;
-	while(pGP_BTN->IDR&GPIO_IDR_0);
-	pGP_LED->ODR &= ~GPIO_ODR_3;
+//  	pGP_LED->ODR |= GPIO_ODR_3;
+//	while(pGP_BTN->IDR&GPIO_IDR_0);
+//	pGP_LED->ODR &= ~GPIO_ODR_3;
 	//step one, font med.
 	size = sizeof(fontlarge);
 	nFontsize = 52;
@@ -461,6 +472,9 @@ int main(void)
 		  HAL_Delay(10);
 	  }while(sHandler.BUSY1);
 	}
+
+
+
 
 
 

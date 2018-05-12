@@ -1,7 +1,7 @@
 /*
  * SST26VF032.c
  *
- *  Created on: 2 áôáø× 2018
+ *  Created on: 2 ï¿½ï¿½ï¿½ï¿½ï¿½ 2018
  *      Author: maor
  */
 
@@ -117,5 +117,14 @@ void sst_flash_write_block_proc()
 		nWorking_buffer[1+i] = 0;
 	}
 	spi_write_blocking(nWorking_buffer,19);
+
+}
+
+void sst_flash_earse_chip()
+{
+	nWorking_buffer[0] = SST_FLASH_CMD_CE;
+	spi_write_single(nWorking_buffer[0]);
+
+
 
 }
