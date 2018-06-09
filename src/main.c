@@ -366,11 +366,12 @@ const uint16_t fontlarge[] = {
 int main(void)
 {
   uint8_t res=0;
-  uint16_t i;
+  uint16_t i,ii;
+
   uint8_t j;
   uint16_t size =0;
   uint8_t nFontsize =0;
-  uint8_t nTestbuf[64];
+  uint8_t nTestbuf[64]={0};
 
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
@@ -389,48 +390,48 @@ int main(void)
   sst_flash_write_enable();
   sst_flash_read_status();
 
-  	  //erase the chip.
-  	  	 sst_flash_earse_chip();
+  //erase the chip.
+	 sst_flash_earse_chip();
 
-
+	 HAL_Delay(20);
+	 do{
+		HAL_Delay(20);
+		sst_flash_read_status();
+	 }while(sHandler.BUSY1);
 
 //    pGP_LED->ODR |= GPIO_ODR_3;
 //    while(pGP_BTN->IDR&GPIO_IDR_0);
 //    pGP_LED->ODR &= ~GPIO_ODR_3;
     //step one, font small.
     size = sizeof(fontsmall);
+    uint8_t* ptr = &(fontsmall[0]);
     nFontsize = 20;
     for(i=0;i<size/nFontsize;i++)
     {
     	pGP_LED->ODR &= ~GPIO_ODR_3;
-  	  sst_flash_write_enable();
+  	  sst_flash_write_cmd_blocking(FLASH_JUMP_SMALL+i*nFontsize,nFontsize,ptr+i*nFontsize,200);
 
-  	  sst_flash_write_cmd(FLASH_JUMP_SMALL+i*nFontsize,nFontsize,((uint8_t*)fontsmall)+i*nFontsize);
 
-  	  do
-  	  {
-  		pGP_LED->ODR |= GPIO_ODR_3;
-  		  sst_flash_read_status();
-  		  HAL_Delay(10);
-  	  }while(sHandler.BUSY1);
+	   HAL_Delay(20);
+
+	   sst_flash_read_cmd(FLASH_JUMP_SMALL+i*nFontsize,nFontsize,nTestbuf);
+
+
+  	  uint16_t nCmpByte;
+  	  uint16_t nReadByte;
+  	 for(ii=0;ii<(nFontsize/2);ii++)
+  		   {
+  			   nCmpByte = (fontsmall[i*(nFontsize/2)+ii]);
+  			   nReadByte = ((nTestbuf[2*ii+1]<<8)|nTestbuf[2*ii]);
+  			   if(nReadByte!=nCmpByte)
+  			   {
+  				   sst_flash_read_cmd(FLASH_JUMP_SMALL+0x100,nFontsize,nTestbuf);
+
+  				   while(1);
+  			   }
+  		   }
+  		   HAL_Delay(100);
     }
-
-    //verify contents of flash.
-   for(i=0;i<(sizeof(fontsmall)/64);i++)
-   {
-	   	   //pull 64 bytes and compare.
-	   sst_flash_read_cmd(FLASH_JUMP_SMALL+i*64,64,nTestbuf);
-
-	   if(memcmp(nTestbuf,(uint8_t*)(fontsmall+i*64),64))
-	   	  {
-	   		 while(1); //there is an issue with the flash...
-	   	  }
-	   HAL_Delay(10);
-   }
-
-
-
-
 //    	pGP_LED->ODR |= GPIO_ODR_3;
 //  	    while(pGP_BTN->IDR&GPIO_IDR_0);
 //  	    pGP_LED->ODR &= ~GPIO_ODR_3;

@@ -60,6 +60,14 @@ int spi_write_blocking(uint8_t* pData,uint16_t nSize)
 
 	}
 	pGP_NSS->BS15 = 1;
+
+	do
+	{
+		*((__IO uint8_t *)&pSPI->DR);
+	}while(i--);
+	*((__IO uint8_t *)&pSPI->DR);
+
+
 	return 0;
 }
 
@@ -125,6 +133,7 @@ int spi_write_read(uint8_t* pTxdata,uint16_t nTx_size,uint8_t* pRxdata,uint16_t 
 	{
 		*((__IO uint8_t *)&pSPI->DR);
 	}while(i--);
+	*((__IO uint8_t *)&pSPI->DR);
 
 
 
@@ -139,6 +148,8 @@ int spi_write_read(uint8_t* pTxdata,uint16_t nTx_size,uint8_t* pRxdata,uint16_t 
 //		//pull data from buffer
 //		*(pRxdata) = *((__IO uint8_t *)&pSPI->DR);
 //	}
+
+
 
 
 

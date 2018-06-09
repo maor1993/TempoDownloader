@@ -20,6 +20,21 @@
  }
 
 
+ static uint8_t sst_flash_solve_mem_overlap(uint32_t nAddr,uint8_t nSize)
+ {
+	 //check if this write will overlap to the next subsector.
+	 if(((nAddr&0x000000ff)+(uint32_t)nSize)&0xf00)
+	 {
+		return ((nAddr&0x000000ff)+nSize)&0xff;
+	 }
+	 else
+	 {
+		 return 0;
+	 }
+
+ }
+
+
  void sst_flash_write_enable()
  {
  	spi_write_single(SST_FLASH_CMD_WREN);
@@ -56,6 +71,78 @@
 
  }
 
+uint8_t sst_flash_write_cmd_blocking(uint32_t nAddr,uint8_t nbytes,uint8_t* pData,uint8_t nRefreshTicks)
+{
+	uint8_t res=0;
+	uint8_t nCurrentTicks=nRefreshTicks;
+
+	uint8_t nExtrabytes;
+
+	sst_flash_write_enable();
+	//verify that chip is alive.
+	sst_flash_read_status();
+	if(!sHandler.WEL)
+	{
+		return 1;
+	}
+
+	//build the tx msg
+	*((uint32_t*)nWorking_buffer) = ((nAddr>>24)&0xff) | // move byte 3 to byte 0
+			((nAddr<<8)&0xff0000) | // move byte 1 to byte 2
+			((nAddr>>8)&0xff00) | // move byte 2 to byte 1
+			((nAddr<<24)&0xff000000); // byte 0 to byte 3;
+	nWorking_buffer[0] = SST_FLASH_CMD_PP;
+
+	//check if there are bytes that must be written to a different subsector.
+	nExtrabytes = sst_flash_solve_mem_overlap(nAddr,nbytes);
+
+	//copy to working buffer the bytes for this section
+	memcpy(nWorking_buffer+4,pData,nbytes-nExtrabytes);
+	spi_write_blocking(nWorking_buffer,nbytes+4-nExtrabytes);
+
+		do{
+			sst_flash_read_status();
+			HAL_Delay(10);
+		}while((nCurrentTicks--)&&(sHandler.BUSY1));
+		//verify that all is good
+		if(sHandler.BUSY1)
+		{
+			return 1; //there is an issue...
+		}
+	if(nExtrabytes)
+	{
+		sst_flash_write_enable();
+		sst_flash_read_status();
+		//write the rest of the bytes.
+		nAddr += nbytes-nExtrabytes;
+		nCurrentTicks = nRefreshTicks;
+
+			//write the new address.
+			*((uint32_t*)nWorking_buffer) = ((nAddr>>24)&0xff) | // move byte 3 to byte 0
+						((nAddr<<8)&0xff0000) | // move byte 1 to byte 2
+						((nAddr>>8)&0xff00) | // move byte 2 to byte 1
+						((nAddr<<24)&0xff000000); // byte 0 to byte 3;
+			nWorking_buffer[0] = SST_FLASH_CMD_PP;
+
+		//copy the spare bytes to buffer.
+		memcpy(nWorking_buffer+4,pData+nbytes-nExtrabytes,nExtrabytes);
+		spi_write_blocking(nWorking_buffer,4+nExtrabytes);
+
+
+		do{
+			sst_flash_read_status();
+			HAL_Delay(10);
+		}while((nCurrentTicks--)&&(sHandler.BUSY1));
+		//verify that all is good
+		if(sHandler.BUSY1)
+		{
+			return 1; //there is an issue...
+		}
+	}
+
+	return res;
+
+}
 uint8_t sst_flash_init()
 {
 
